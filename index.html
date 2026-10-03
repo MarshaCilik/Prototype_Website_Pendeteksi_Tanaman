@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pemantauan Tanaman</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        /* Sidebar Color matching exact reference #b3ea9a */
+        .sidebar-bg {
+            background-color: #b3ea9a;
+        }
+
+        /* Dark Green Header Banner #1b4c10 */
+        .header-banner {
+            background-color: #1b4c10;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* Active navigation item styling */
+        .active-nav-item {
+            background-color: #1b4c10;
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(27, 76, 16, 0.35);
+        }
+
+        /* Frosted Glass Outer Cards */
+        .metric-card-outer {
+            background: rgba(255, 255, 255, 0.38);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.12);
+        }
+
+        .metric-card-outer.unsafe {
+            background: rgba(254, 226, 226, 0.65);
+            border: 2px solid rgba(239, 68, 68, 0.7);
+            box-shadow: 0 8px 32px 0 rgba(239, 68, 68, 0.25);
+        }
+
+        /* Top Title Badge inside Metric Card */
+        .metric-badge {
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Bottom Large Number Box inside Metric Card */
+        .metric-value-box {
+            background: #ffffff;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Smooth animation transitions */
+        .transition-all-custom {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 999px;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden bg-slate-900 select-none">
+
+    <!-- Agriculture Landscape Background with local image.png primary and unsplash fallback -->
+    <div class="fixed inset-0 z-0 bg-cover bg-center scale-105 filter brightness-[0.95]" 
+         style="background-image: url('img/image.png');">
+        <!-- Subtle dark gradient overlay for contrast -->
+        <div class="absolute inset-0 bg-gradient-to-tr from-emerald-950/30 via-transparent to-black/20"></div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="relative z-10 flex h-full w-full pt-6 md:pt-0">
+
+        <!-- Sidebar Navigation (Default Mode: Compact / Ringkas w-20) -->
+        <aside id="sidebar" class="sidebar-bg w-20 flex-shrink-0 flex flex-col items-center py-6 px-3 transition-all-custom z-40 relative shadow-2xl border-r border-black/10">
+            
+            <!-- Sidebar Header / Hamburger Button ☰ -->
+            <div class="w-full flex items-center justify-center mb-8">
+                <button id="toggle-sidebar" 
+                        title="Buka / Tutup Menu Sidebar"
+                        class="w-12 h-12 bg-[#1b4c10] hover:bg-[#14390c] active:scale-95 text-white rounded-2xl flex items-center justify-center transition-all shadow-lg focus:outline-none cursor-pointer">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.8" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Plant List Menu (Dynamically Rendered) -->
+            <nav class="space-y-4 flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col items-center" id="plant-menu">
+                <!-- Navigation items dynamically inserted by JavaScript -->
+            </nav>
+
+            <!-- Bottom Live Sensor Status Dot -->
+            <div class="mt-auto pt-4 border-t border-black/10 w-full flex flex-col items-center justify-center gap-1">
+                <span class="relative flex h-3 w-3" title="Sensor Live IoT Active">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-600 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-800"></span>
+                </span>
+                <span id="sidebar-timer" class="text-[10px] font-extrabold text-emerald-950 font-mono hidden">15:57</span>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 h-full overflow-y-auto p-4 md:p-8 lg:p-10 flex flex-col justify-between">
+            
+            <div class="max-w-6xl w-full mx-auto space-y-6 md:space-y-8">
+
+                <!-- Plant Header Card (Dark Green Rounded Banner) -->
+                <div id="header-card" class="header-banner rounded-3xl md:rounded-[32px] p-6 md:p-8 text-white relative overflow-hidden shadow-2xl transition-all-custom flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                    
+                    <!-- Left Info Header -->
+                    <div class="space-y-3 z-10 max-w-xl">
+                        <h1 id="plant-name" class="text-3xl md:text-5xl font-extrabold tracking-tight drop-shadow-md">
+                            Kangkung
+                        </h1>
+                        <div class="flex items-center gap-3 text-base md:text-lg font-medium text-white/95">
+                            <span>Keterangan tanaman:</span>
+                            <span id="status-badge" class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-bold bg-black/20 backdrop-blur-md">
+                                <span id="status-dot" class="w-3.5 h-3.5 rounded-full bg-emerald-400 shadow-[0_0_12px_#34d399]"></span>
+                                <span id="status-text" class="text-white">Aman</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Right Crop Thumbnail Image Banner -->
+                    <div class="w-full sm:w-72 h-32 sm:h-36 rounded-2xl md:rounded-3xl overflow-hidden relative shadow-xl border border-white/20 flex-shrink-0">
+                        <img id="plant-image" 
+                             src="img/kangkung.jpg" 
+                             alt="Tanaman" 
+                             class="w-full h-full object-cover object-center transition-all duration-500 scale-105 hover:scale-110">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+                    </div>
+                </div>
+
+                <!-- Metric Cards Grid (4 Cards: PH, Suhu Air, Suhu Udara, Kelembapan) -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6" id="metrics-grid">
+                    
+                    <!-- Card 1: PH -->
+                    <div class="metric-card-outer p-4 md:p-5 rounded-3xl flex flex-col gap-3 md:gap-4 transition-all-custom hover:translate-y-[-2px]">
+                        <div class="metric-badge py-2 px-4 rounded-2xl text-center">
+                            <span class="text-slate-800 font-bold text-sm md:text-base tracking-wide">PH</span>
+                        </div>
+                        <div class="metric-value-box flex-1 min-h-[120px] md:min-h-[150px] rounded-2xl flex flex-col items-center justify-center p-4">
+                            <span id="val-ph" class="text-4xl md:text-6xl font-extrabold text-slate-800 tracking-tight">7</span>
+                            <span id="sub-ph" class="text-xs text-red-500 mt-2 font-bold hidden">Batas Normal: 6.0 - 7.0</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: Suhu Air -->
+                    <div class="metric-card-outer p-4 md:p-5 rounded-3xl flex flex-col gap-3 md:gap-4 transition-all-custom hover:translate-y-[-2px]">
+                        <div class="metric-badge py-2 px-4 rounded-2xl text-center">
+                            <span class="text-slate-800 font-bold text-sm md:text-base tracking-wide">Suhu Air</span>
+                        </div>
+                        <div class="metric-value-box flex-1 min-h-[120px] md:min-h-[150px] rounded-2xl flex flex-col items-center justify-center p-4">
+                            <span id="val-suhu-air" class="text-4xl md:text-6xl font-extrabold text-slate-800 tracking-tight">24°C</span>
+                            <span id="sub-suhu-air" class="text-xs text-red-500 mt-2 font-bold hidden">Batas Normal: 18°C - 24°C</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Suhu Udara -->
+                    <div class="metric-card-outer p-4 md:p-5 rounded-3xl flex flex-col gap-3 md:gap-4 transition-all-custom hover:translate-y-[-2px]">
+                        <div class="metric-badge py-2 px-4 rounded-2xl text-center">
+                            <span class="text-slate-800 font-bold text-sm md:text-base tracking-wide">Suhu Udara</span>
+                        </div>
+                        <div class="metric-value-box flex-1 min-h-[120px] md:min-h-[150px] rounded-2xl flex flex-col items-center justify-center p-4">
+                            <span id="val-suhu-udara" class="text-4xl md:text-6xl font-extrabold text-slate-800 tracking-tight">28°C</span>
+                            <span id="sub-suhu-udara" class="text-xs text-red-500 mt-2 font-bold hidden">Batas Normal: 20°C - 28°C</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Kelembapan -->
+                    <div class="metric-card-outer p-4 md:p-5 rounded-3xl flex flex-col gap-3 md:gap-4 transition-all-custom hover:translate-y-[-2px]">
+                        <div class="metric-badge py-2 px-4 rounded-2xl text-center">
+                            <span class="text-slate-800 font-bold text-sm md:text-base tracking-wide">Kelembapan</span>
+                        </div>
+                        <div class="metric-value-box flex-1 min-h-[120px] md:min-h-[150px] rounded-2xl flex flex-col items-center justify-center p-4">
+                            <span id="val-kelembapan" class="text-4xl md:text-6xl font-extrabold text-slate-800 tracking-tight">60%</span>
+                            <span id="sub-kelembapan" class="text-xs text-red-500 mt-2 font-bold hidden">Batas Normal: 60% - 80%</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Warning Detail Panel (Only Displayed when Plant is 'Tidak Aman') -->
+                <div id="warning-panel" class="hidden transition-all-custom">
+                    <div class="bg-red-950/85 backdrop-blur-xl border-2 border-red-500/80 rounded-3xl p-6 text-red-100 shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+                        <div class="flex items-start gap-4">
+                            <div class="p-3 bg-red-500/20 text-red-400 rounded-2xl flex-shrink-0">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                    Peringatan Analisis Kritis: Tanaman Selada Berisiko Tinggi!
+                                </h3>
+                                <div id="warning-details" class="text-sm text-red-200/90 mt-2 space-y-1 leading-relaxed">
+                                    <!-- Dynamic Warning Details -->
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="triggerActionPlan()" class="whitespace-nowrap px-5 py-3 bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-sm rounded-xl transition-all shadow-lg flex items-center gap-2 cursor-pointer">
+                            <span>Jalankan Tindakan Penanganan</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer Info -->
+            <div class="max-w-6xl w-full mx-auto mt-6 pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-white/70 gap-2">
+                <div>
+                    Sistem Pemantauan Greenhouse IoT PIB &bull; Precision Agriculture
+                </div>
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleSimulation()" id="sim-btn" class="hover:text-white underline decoration-dotted cursor-pointer">
+                        Status Simulasi: On
+                    </button>
+                    <span>|</span>
+                    <span id="live-clock-footer">Diperbarui: Live IoT</span>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 max-w-md bg-slate-900/95 text-white p-4 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-3">
+        <div id="toast-icon" class="text-emerald-400">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <div id="toast-msg" class="text-sm font-medium">Notifikasi</div>
+    </div>
+
+    <script>
+        const plantData = [
+            {
+                id: 'kangkung',
+                name: 'Kangkung',
+                status: 'Aman',
+                isSafe: true,
+                ph: '7',
+                suhuAir: '24°C',
+                suhuUdara: '28°C',
+                kelembapan: '60%',
+                image: './img/kangkung.jpg',
+                warnings: []
+            },
+            {
+                id: 'selada',
+                name: 'Selada',
+                status: 'Tidak Aman',
+                isSafe: false,
+                ph: '4.8',
+                suhuAir: '34°C',
+                suhuUdara: '35°C',
+                kelembapan: '35%',
+                image: 'https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?q=80&w=800&auto=format&fit=crop',
+                warnings: [
+                    'pH Air 4.8 (Sangat Asam - Normal: 6.0-7.0)',
+                    'Suhu Air 34°C (Kritis Panas - Normal: 18-24°C)',
+                    'Suhu Udara 35°C (Sangat Panas - Normal: 20-28°C)',
+                    'Kelembapan Udara 35% (Kering Ekstrem - Normal: 60-80%)'
+                ]
+            },
+            {
+                id: 'pakcoy',
+                name: 'Pakcoy',
+                status: 'Aman',
+                isSafe: true,
+                ph: '6.5',
+                suhuAir: '22°C',
+                suhuUdara: '26°C',
+                kelembapan: '68%',
+                image: 'img/pakcoy.jpg',
+                warnings: []
+            },
+            {
+                id: 'bayam',
+                name: 'Bayam',
+                status: 'Aman',
+                isSafe: true,
+                ph: '6.8',
+                suhuAir: '23°C',
+                suhuUdara: '27°C',
+                kelembapan: '65%',
+                image: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?q=80&w=800&auto=format&fit=crop',
+                warnings: []
+            }
+        ];
+
+        // State Management
+        let activePlantId = 'kangkung';
+        let isSidebarExpanded = false; // Default requirement: ringkas / terlipat (matching screenshot)
+        let isSimulationActive = true;
+
+        /* DOM Elements */
+        const sidebarEl = document.getElementById('sidebar');
+        const toggleSidebarBtn = document.getElementById('toggle-sidebar');
+        const plantMenuEl = document.getElementById('plant-menu');
+        const sidebarTimerEl = document.getElementById('sidebar-timer');
+
+        const plantNameEl = document.getElementById('plant-name');
+        const statusBadgeEl = document.getElementById('status-badge');
+        const statusDotEl = document.getElementById('status-dot');
+        const statusTextEl = document.getElementById('status-text');
+        const plantImageEl = document.getElementById('plant-image');
+
+        const valPh = document.getElementById('val-ph');
+        const valSuhuAir = document.getElementById('val-suhu-air');
+        const valSuhuUdara = document.getElementById('val-suhu-udara');
+        const valKelembapan = document.getElementById('val-kelembapan');
+
+        const subPh = document.getElementById('sub-ph');
+        const subSuhuAir = document.getElementById('sub-suhu-air');
+        const subSuhuUdara = document.getElementById('sub-suhu-udara');
+        const subKelembapan = document.getElementById('sub-kelembapan');
+
+        const warningPanel = document.getElementById('warning-panel');
+        const warningDetails = document.getElementById('warning-details');
+
+        // Fallback Inline SVG Data URL leaf icon in case local PNG images are not present in preview
+        const activeSvgFallback = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'><path d='M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22C7.3 18.06 9.17 14.39 11.23 11C14 11 16 9 17 8Z'/></svg>";
+        const pasifSvgFallback = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231b4c10'><path d='M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22C7.3 18.06 9.17 14.39 11.23 11C14 11 16 9 17 8Z'/></svg>";
+
+        function renderSidebar() {
+            // Apply expanded or compact classes to sidebar container
+            if (isSidebarExpanded) {
+                sidebarEl.className = "sidebar-bg w-72 md:w-80 flex-shrink-0 flex flex-col p-5 md:p-6 transition-all-custom z-40 relative shadow-2xl border-r border-black/10";
+                sidebarTimerEl.classList.remove('hidden');
+            } else {
+                sidebarEl.className = "sidebar-bg w-20 flex-shrink-0 flex flex-col items-center py-6 px-3 transition-all-custom z-40 relative shadow-2xl border-r border-black/10";
+                sidebarTimerEl.classList.add('hidden');
+            }
+
+            // Render Nav Items
+            plantMenuEl.innerHTML = plantData.map(plant => {
+                const isActive = plant.id === activePlantId;
+                
+                // Icon source requirement: 'icon aktif.png' or 'icon pasif.png'
+                const iconSrc = isActive ? 'img/icon aktif.png' : 'img/icon pasif.png';
+                const fallbackSrc = isActive ? activeSvgFallback : pasifSvgFallback;
+
+                if (isSidebarExpanded) {
+                    // Expanded Mode: Shows Icon + Text Label
+                    const activeClass = isActive 
+                        ? 'active-nav-item font-bold' 
+                        : 'text-slate-900 hover:bg-black/10 font-semibold';
+
+                    return `
+                        <button onclick="selectPlant('${plant.id}')" 
+                                class="w-full text-left px-4 py-3.5 rounded-2xl flex items-center justify-between transition-all duration-200 cursor-pointer ${activeClass}">
+                            <div class="flex items-center gap-3">
+                                <img src="${iconSrc}" 
+                                     alt="Icon ${plant.name}" 
+                                     onerror="this.onerror=null; this.src='${fallbackSrc}';"
+                                     class="w-6 h-6 object-contain flex-shrink-0 transition-transform duration-200">
+                                <span class="text-lg font-bold">${plant.name}</span>
+                            </div>
+                            ${!plant.isSafe ? '<span class="w-3 h-3 rounded-full bg-red-500 animate-ping" title="Kondisi Tidak Aman"></span>' : ''}
+                        </button>
+                    `;
+                } else {
+                    // Compact / Collapsed Mode (Default): Icon Only Centered
+                    const activeClass = isActive 
+                        ? 'bg-[#1b4c10] shadow-lg ring-2 ring-[#1b4c10]/50 scale-105' 
+                        : 'hover:bg-black/10';
+
+                    return `
+                        <button onclick="selectPlant('${plant.id}')" 
+                                title="${plant.name}${!plant.isSafe ? ' (Tidak Aman)' : ''}"
+                                class="w-12 h-12 rounded-2xl flex items-center justify-center relative transition-all duration-200 cursor-pointer ${activeClass}">
+                            <img src="${iconSrc}" 
+                                 alt="Icon ${plant.name}" 
+                                 onerror="this.onerror=null; this.src='${fallbackSrc}';"
+                                 class="w-7 h-7 object-contain transition-transform duration-200">
+                            ${!plant.isSafe ? '<span class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>' : ''}
+                        </button>
+                    `;
+                }
+            }).join('');
+        }
+
+        function selectPlant(id) {
+            activePlantId = id;
+            renderSidebar();
+            updateDashboard();
+        }
+
+        function updateDashboard() {
+            const plant = plantData.find(p => p.id === activePlantId);
+            if (!plant) return;
+
+            const gridContainer = document.getElementById('metrics-grid');
+            gridContainer.classList.add('opacity-40');
+
+            setTimeout(() => {
+                // Header Info
+                plantNameEl.textContent = plant.name;
+                plantImageEl.src = plant.image;
+
+                if (plant.isSafe) {
+                    statusDotEl.className = "w-3.5 h-3.5 rounded-full bg-emerald-400 shadow-[0_0_12px_#34d399]";
+                    statusTextEl.textContent = "Aman";
+                    statusBadgeEl.className = "inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-bold bg-black/20 backdrop-blur-md text-emerald-300";
+                    warningPanel.classList.add('hidden');
+                } else {
+                    statusDotEl.className = "w-3.5 h-3.5 rounded-full bg-red-500 shadow-[0_0_12px_#ef4444] animate-ping";
+                    statusTextEl.textContent = "Tidak Aman";
+                    statusBadgeEl.className = "inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-bold bg-red-500/30 border border-red-400/50 backdrop-blur-md text-red-200";
+                    
+                    warningDetails.innerHTML = plant.warnings.map(w => `<div class="flex items-center gap-2">&bull; <span>${w}</span></div>`).join('');
+                    warningPanel.classList.remove('hidden');
+                }
+
+                // Sensor Values
+                valPh.textContent = plant.ph;
+                valSuhuAir.textContent = plant.suhuAir;
+                valSuhuUdara.textContent = plant.suhuUdara;
+                valKelembapan.textContent = plant.kelembapan;
+
+                // Card Styling for Critical State (Selada)
+                const metricCards = document.querySelectorAll('.metric-card-outer');
+                const metricValueBoxes = document.querySelectorAll('.metric-value-box');
+
+                if (!plant.isSafe) {
+                    metricCards.forEach(card => card.classList.add('unsafe'));
+                    metricValueBoxes.forEach(box => {
+                        box.querySelector('span:first-child').classList.add('text-red-600');
+                    });
+                    
+                    subPh.classList.remove('hidden');
+                    subSuhuAir.classList.remove('hidden');
+                    subSuhuUdara.classList.remove('hidden');
+                    subKelembapan.classList.remove('hidden');
+                } else {
+                    metricCards.forEach(card => card.classList.remove('unsafe'));
+                    metricValueBoxes.forEach(box => {
+                        box.querySelector('span:first-child').classList.remove('text-red-600');
+                    });
+                    
+                    subPh.classList.add('hidden');
+                    subSuhuAir.classList.add('hidden');
+                    subSuhuUdara.classList.add('hidden');
+                    subKelembapan.classList.add('hidden');
+                }
+
+                gridContainer.classList.remove('opacity-40');
+            }, 120);
+        }
+
+        // Toggle Sidebar between Compact (Default) and Expanded
+        toggleSidebarBtn.addEventListener('click', () => {
+            isSidebarExpanded = !isSidebarExpanded;
+            renderSidebar();
+        });
+
+        // Live Clock Timer
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+            document.getElementById('live-clock-footer').textContent = `Diperbarui: ${timeStr} WIB`;
+            if (sidebarTimerEl) sidebarTimerEl.textContent = timeStr.substring(0, 5);
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Simulation toggle
+        function toggleSimulation() {
+            isSimulationActive = !isSimulationActive;
+            document.getElementById('sim-btn').textContent = `Status Simulasi: ${isSimulationActive ? 'On' : 'Off'}`;
+            showToast(`Simulasi sensor IoT ${isSimulationActive ? 'Diaktifkan' : 'Dimatikan'}`);
+        }
+
+        function triggerActionPlan() {
+            showToast('Memulai Tindakan Penanganan: Pengontrolan Dosis pH & Kipas Pendingin...', 'warning');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastMsg.textContent = message;
+            if (type === 'warning') {
+                toastIcon.innerHTML = `<svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`;
+            } else {
+                toastIcon.innerHTML = `<svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`;
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3200);
+        }
+
+        // Initialize application on load
+        window.onload = function() {
+            renderSidebar();
+            updateDashboard();
+        };
+    </script>
+</body>
+</html>
